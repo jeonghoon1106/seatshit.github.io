@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>자리 배치 프로그램</title>
+  <style>
+    /* 배경 및 기본 스타일 */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f9fc;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .ui-container {
+      background-color: #e8f5e9; /* 초록색 계열 */
+      padding: 40px;
+      width: 450px;
+      border-radius: 10px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 10;
+    }
+
+    h1 {
+      font-size: 24px;
+      color: #388e3c; /* 초록색 */
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+
+    /* 버튼 스타일 */
+    button {
+      background-color: #388e3c; /* 초록색 */
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 10px 0;
+      width: 100%;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #2c6c2f; /* 초록색 어두운 톤 */
+    }
+
+    /* 입력창 스타일 */
+    input {
+      padding: 12px;
+      margin: 10px 0;
+      width: 100%;
+      font-size: 16px;
+      border: 2px solid #388e3c; /* 초록색 테두리 */
+      border-radius: 8px;
+      box-sizing: border-box;
+      transition: border-color 0.3s ease;
+    }
+
+    input:focus {
+      border-color: #2c6c2f; /* 초록색 어두운 톤 */
+      outline: none;
+    }
+
+    /* 책상 배치 영역 */
+    .container {
+      position: relative;
+      width: 100%;
+      height: 400px;
+      margin-top: 20px;
+      background-color: transparent;
+      border: none;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .desk {
+      position: absolute;
+      width: 70px;
+      height: 50px;
+      background-color: #3498db;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 5px;
+      cursor: pointer;
+      color: white;
+      font-weight: bold;
+      user-select: none;
+      transition: background-color 0.3s ease;
+      z-index: 1;
+    }
+
+    .desk:hover {
+      background-color: #2980b9;
+    }
+
+    /* 칠판 추가 */
+    .chalkboard {
+      position: absolute;
+      width: 600px;
+      height: 21px;
+      background-color: #2c3e50;
+      color: white;
+      font-size: 18px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 5px;
+      top: -60px; /* 칠판을 더 위로 이동 */
+      left: 180px; /* 왼쪽으로 조금 이동 */
+      z-index: 2;
+      text-align: center;
+    }
+
+    /* 작은 화면을 위한 반응형 스타일 */
+    @media (max-width: 600px) {
+      .ui-container {
+        width: 90%;
+        padding: 30px;
+      }
+    }
+
+    /* 오른쪽 아래에 표시할 텍스트 */
+    .footer {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      font-size: 14px;
+      color: #2c3e50;
+      font-weight: bold;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ui-container">
+    <h1>자리 배치 프로그램</h1>
+    <label for="students">학생 수</label>
+    <input type="number" id="students" placeholder="학생 수" value="10" />
+    <label for="desks">책상 수</label>
+    <input type="number" id="desks" placeholder="책상 수" value="15" />
+    <button onclick="randomizeSeats()">자리 배치</button>
+    <button onclick="alignToGrid()">정렬</button>
+  </div>
+
+  <!-- 책상들이 여기에 배치됩니다 -->
+  <div id="desk-container" class="container">
+    <!-- 칠판은 처음 한 번만 생성 -->
+    <div id="chalkboard" class="chalkboard">칠판</div>
+  </div>
+
+  <!-- 오른쪽 아래에 표시할 텍스트 -->
+  <div class="footer">Made by 10920 Lee</div>
+
+  <script>
+    const GRID_SIZE = 80; // 격자 크기
+    const GROUPS = 3;
+    const ROWS = 5;
+    const COLS = 2;
+    const GROUP_SPACING = GRID_SIZE * 2; // 그룹 간격
+    let desks = 15; // 책상 수
+    let students = 10; // 학생 수
+    let deskElements = [];
+    let draggingDesk = null;
+
+    // 초기 책상 배치 설정
+    function initializeDesks() {
+      const container = document.getElementById("desk-container");
+      // 칠판이 이미 존재하면 삭제하지 않도록 설정
+      const chalkboard = document.getElementById("chalkboard");
+      if (!chalkboard) {
+        const newChalkboard = document.createElement("div");
+        newChalkboard.id = "chalkboard";
+        newChalkboard.classList.add("chalkboard");
+        newChalkboard.textContent = "칠판";
+        container.appendChild(newChalkboard);
+      }
+
+      container.innerHTML = ''; // 기존 책상들 제거
+      container.appendChild(chalkboard); // 칠판을 유지
+
+      deskElements = [];
+      let counter = 1;
+      for (let g = 0; g < GROUPS; g++) {
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            if (counter > desks) break;
+            let x = g * (COLS * GRID_SIZE + GROUP_SPACING) + c * GRID_SIZE + 100; // 오른쪽으로 100px 이동
+            let y = r * GRID_SIZE;
+
+            // 책상 생성
+            const desk = document.createElement("div");
+            desk.classList.add("desk");
+            desk.id = `desk-${counter}`;
+            desk.style.left = `${x}px`;
+            desk.style.top = `${y}px`;
+            desk.textContent = counter <= students ? counter : ""; // 학생 수만큼 번호 표시
+
+            // 드래그 기능 추가
+            desk.onmousedown = (event) => handleDragStart(event, desk);
+            deskElements.push(desk);
+            container.appendChild(desk);
+            counter++;
+          }
+        }
+      }
+    }
+
+    // 드래그 시작
+    function handleDragStart(event, desk) {
+      draggingDesk = desk;
+      const offsetX = event.clientX - desk.offsetLeft;
+      const offsetY = event.clientY - desk.offsetTop;
+
+      document.onmousemove = (moveEvent) => handleDrag(moveEvent, offsetX, offsetY);
+      document.onmouseup = () => handleDragEnd();
+    }
+
+    // 드래그 중
+    function handleDrag(event, offsetX, offsetY) {
+      if (draggingDesk) {
+        draggingDesk.style.left = `${event.clientX - offsetX}px`;
+        draggingDesk.style.top = `${event.clientY - offsetY}px`;
+      }
+    }
+
+    // 드래그 종료
+    function handleDragEnd() {
+      document.onmousemove = null;
+      document.onmouseup = null;
+      draggingDesk = null;
+    }
+
+    // 자리 랜덤 배치 (학생 번호만 랜덤으로 배치)
+    function randomizeSeats() {
+      const container = document.getElementById("desk-container");
+
+      // 랜덤 번호 생성
+      let studentNumbers = [];
+      for (let i = 1; i <= students; i++) {
+        studentNumbers.push(i);
+      }
+      studentNumbers = studentNumbers.sort(() => Math.random() - 0.5); // 번호 섞기
+
+      // 각 책상에 번호만 랜덤하게 배치
+      deskElements.forEach((desk, index) => {
+        desk.textContent = index < students ? studentNumbers[index] : ""; // 학생 번호만 랜덤으로 배치
+      });
+    }
+
+    // 책상 정렬 (드래그된 책상만 격자에 맞춰 정렬)
+    function alignToGrid() {
+      deskElements.forEach(desk => {
+        // 책상 위치 가져오기
+        const deskLeft = parseInt(desk.style.left, 10);
+        const deskTop = parseInt(desk.style.top, 10);
+
+        // 책상 격자에 맞추기
+        const newX = Math.round(deskLeft / GRID_SIZE) * GRID_SIZE;
+        const newY = Math.round(deskTop / GRID_SIZE) * GRID_SIZE;
+
+        // 책상 위치 수정
+        desk.style.left = `${newX}px`;
+        desk.style.top = `${newY}px`;
+        desk.textContent = parseInt(desk.textContent) <= students ? desk.textContent : ""; // 학생 수만큼 번호 배치
+      });
+    }
+
+    // 학생 수와 책상 수 변경
+    document.getElementById("students").addEventListener("change", (event) => {
+      students = parseInt(event.target.value);
+      if (students > desks) {
+        students = desks; // 학생 수가 책상 수를 초과하지 않도록 설정
+        event.target.value = students;
+      }
+      initializeDesks(); // 책상 초기화
+    });
+
+    document.getElementById("desks").addEventListener("change", (event) => {
+      desks = parseInt(event.target.value);
+      initializeDesks(); // 책상 초기화
+    });
+
+    // 초기화 시 책상 배치
+    initializeDesks();
+  </script>
+</body>
+</html>
